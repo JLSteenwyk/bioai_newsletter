@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Bluesky Thread - BioAI Weekly</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f4f6f8;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 700px;
+            margin: 0 auto;
+            background: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            padding: 30px;
+        }
+        h1 {
+            margin-top: 0;
+            font-size: 1.8em;
+            color: #0077ff;
+        }
+        .meta {
+            color: #666;
+            margin-bottom: 25px;
+        }
+        .post {
+            margin-bottom: 25px;
+            position: relative;
+        }
+        .post-number {
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: #333;
+        }
+        textarea {
+            width: 100%;
+            min-height: 110px;
+            resize: vertical;
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid #d0d7de;
+            font-size: 0.95em;
+            line-height: 1.5;
+        }
+        button {
+            margin-top: 8px;
+            padding: 8px 16px;
+            background-color: #0077ff;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #005ec2;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>BioAI Weekly • Bluesky Thread</h1>
+        <div class="meta">Generated on January 19, 2026</div>
+        <div class='post'><div class='post-number'>Post 1</div><textarea readonly>BioAI Weekly: sifted 35 research drops + 15 community threads to map the frontier. #ai #machinelearning #clinical</textarea><button onclick="copyPost(1)">Copy</button></div>
+<div class='post'><div class='post-number'>Post 2</div><textarea readonly>#ai watch → ai: 18 mentions • labs: ArXiv AI, ArXiv Quantitative Biology • community: r/bioinformatics, r/artificial • mixed chatter</textarea><button onclick="copyPost(2)">Copy</button></div>
+<div class='post'><div class='post-number'>Post 3</div><textarea readonly>#machinelearning watch → machine learning: 13 mentions • labs: ArXiv Quantitative Biology, bioRxiv Bioinformatics • very positive energy</textarea><button onclick="copyPost(3)">Copy</button></div>
+<div class='post'><div class='post-number'>Post 4</div><textarea readonly>#clinical watch → clinical: 9 mentions • labs: ArXiv Quantitative Biology, MarkTechPost • community: r/artificial • mixed chatter</textarea><button onclick="copyPost(4)">Copy</button></div>
+<div class='post'><div class='post-number'>Post 5</div><textarea readonly>Full breakdown, citations, and longform takeaways in this week’s BioAI Weekly (Jan 19). Subscribe + share if it helps your lab.</textarea><button onclick="copyPost(5)">Copy</button></div>
+    </div>
+    <script>
+        function copyPost(idx) {
+            const textarea = document.querySelectorAll('textarea')[idx - 1];
+            textarea.select();
+            textarea.setSelectionRange(0, 99999);
+            document.execCommand('copy');
+        }
+    </script>
+</body>
+</html>
