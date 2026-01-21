@@ -2,12 +2,15 @@ import json
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional
 import os
+from pathlib import Path
 from rss_scraper import RSSNewsScraper
 from reddit_scraper import RedditScraper
 from community_scraper import CommunityAggregator
 from trend_analyzer import TrendAnalyzer
 from summarizer import AISummarizer
 from bluesky_generator import BlueskyPostGenerator
+from social_content_generator import SocialContentGenerator
+from html_generator import HTMLGenerator
 
 class NewsletterGenerator:
     def __init__(self, anthropic_api_key: str = None):
@@ -17,6 +20,8 @@ class NewsletterGenerator:
         self.trend_analyzer = TrendAnalyzer()
         self.summarizer = AISummarizer(anthropic_api_key)
         self.bluesky_generator = BlueskyPostGenerator(self.summarizer)
+        self.social_content_generator = SocialContentGenerator(self.summarizer)
+        self.html_generator = HTMLGenerator()
         
     def collect_all_data(self, days_back: int = 7) -> tuple:
         """Collect data from all sources"""
@@ -502,55 +507,82 @@ class NewsletterGenerator:
         if not filename:
             timestamp = datetime.now().strftime("%Y%m%d")
             filename = f"ai_weekly_{timestamp}.html"
-        
-        filepath = f"/Users/jacoblsteenwyk/Desktop/BUSINESS/AI_NEWS/{filename}"
-        
+
+        # Use output directory in project folder
+        output_dir = Path(__file__).parent / "output"
+        output_dir.mkdir(exist_ok=True)
+        filepath = output_dir / filename
+
         with open(filepath, 'w', encoding='utf-8') as f:
             f.write(html_content)
-        
+
         print(f"📧 Newsletter saved to {filepath}")
-        return filepath
+        return str(filepath)
     
-    def generate_weekly_newsletter(self, days_back: int = 7, generate_social: bool = True) -> tuple[str, str]:
-        """Generate complete weekly newsletter and optional Bluesky thread"""
+    def generate_weekly_newsletter(self, days_back: int = 7, generate_social: bool = True) -> tuple[str, str, str]:
+        """Generate complete weekly newsletter, Bluesky thread, and unified social content.
+
+        Args:
+            days_back: Number of days of content to analyze
+            generate_social: Whether to generate social media content
+
+        Returns:
+            Tuple of (newsletter_path, bluesky_path, social_content_path)
+        """
         print("🚀 Generating BioAI Weekly Newsletter...\n")
-        
+
         # Collect all data
         articles, posts, trend_report = self.collect_all_data(days_back)
-        
+
         # Generate newsletter
         html_content = self.generate_html_newsletter(
             articles,
             posts,
             trend_report
         )
-        
+
         # Save newsletter
         newsletter_filepath = self.save_newsletter(html_content)
-        
-        # Generate Bluesky thread if requested
+
+        # Generate social content if requested
         bluesky_filepath = None
+        social_filepath = None
         if generate_social:
+            # Generate legacy Bluesky thread
             bluesky_filepath = self.bluesky_generator.generate_bluesky_thread(
-                articles, 
-                posts, 
+                articles,
+                posts,
                 trend_report['trending_topics']
             )
-        
+
+            # Generate unified social content (Bluesky, LinkedIn, Blog)
+            trends = trend_report.get('trending_topics', [])
+            weekly_content = self.social_content_generator.generate_weekly_content(
+                articles=articles,
+                community_posts=posts,
+                trends=trends,
+                max_posts=3
+            )
+            social_filepath = self.html_generator.generate_html(weekly_content)
+
         print(f"\n✅ Newsletter generation complete!")
         print(f"📊 Analyzed {len(articles)} articles and {len(posts)} community posts")
         print(f"📄 Newsletter saved to: {newsletter_filepath}")
         if bluesky_filepath:
             print(f"🐦 Bluesky thread saved to: {bluesky_filepath}")
-        
-        return newsletter_filepath, bluesky_filepath
+        if social_filepath:
+            print(f"📱 Social content saved to: {social_filepath}")
+
+        return newsletter_filepath, bluesky_filepath, social_filepath
 
 if __name__ == "__main__":
     # Initialize newsletter generator
-    # Set your OpenAI API key in environment variable or pass directly
+    # Set your Anthropic API key in environment variable or pass directly
     generator = NewsletterGenerator()
-    
+
     # Generate this week's newsletter
-    newsletter_path = generator.generate_weekly_newsletter(days_back=7)
-    
+    newsletter_path, bluesky_path, social_path = generator.generate_weekly_newsletter(days_back=7)
+
     print(f"\n🎉 Open {newsletter_path} in your browser to view the newsletter!")
+    if social_path:
+        print(f"📱 Open {social_path} for social media content!")

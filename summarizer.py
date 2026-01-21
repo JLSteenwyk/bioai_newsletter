@@ -4,6 +4,10 @@ from typing import List, Dict, Optional, Tuple
 from datetime import datetime
 import os
 import re
+from pathlib import Path
+
+# Path to stop_slop knowledge base
+STOP_SLOP_DIR = Path(__file__).parent / "stop_slop"
 
 class AISummarizer:
     def __init__(self, api_key: str = None):
@@ -18,6 +22,46 @@ class AISummarizer:
             self.client = anthropic.Anthropic(api_key=self.api_key)
             self.api_enabled = True
             print("✅ Claude AI summarization enabled")
+        self.stop_slop_content = self._load_stop_slop()
+
+    def _load_stop_slop(self) -> str:
+        """Load the stop_slop knowledge base files."""
+        if not STOP_SLOP_DIR.exists():
+            print("  Warning: stop_slop directory not found, skipping anti-slop rules")
+            return ""
+
+        # Files to load in order
+        files = ["skills.md", "phrases.md", "structures.md", "examples.md"]
+        content_parts = []
+
+        content_parts.append("""
+## ANTI-AI-SLOP RULES
+
+The following rules are CRITICAL for producing human-sounding prose.
+Study these carefully and apply them rigorously to all generated content.
+""")
+
+        for filename in files:
+            filepath = STOP_SLOP_DIR / filename
+            if filepath.exists():
+                try:
+                    with open(filepath, "r", encoding="utf-8") as f:
+                        file_content = f.read()
+                        content_parts.append(f"\n### {filename.upper()}\n\n{file_content}")
+                except Exception as e:
+                    print(f"  Warning: Could not load {filename}: {e}")
+
+        if len(content_parts) > 1:
+            print(f"  Loaded stop_slop knowledge base ({len(content_parts)-1} files)")
+            return "\n".join(content_parts)
+
+        return ""
+
+    def _build_system_prompt(self, base_prompt: str) -> str:
+        """Build the full system prompt including stop_slop rules."""
+        if self.stop_slop_content:
+            return f"{base_prompt}\n\n{self.stop_slop_content}"
+        return base_prompt
     
     def clean_text_for_summary(self, text: str) -> str:
         """Clean text for better summarization"""
@@ -168,11 +212,14 @@ Content to summarize:
 Summary:"""
 
         try:
+            base_prompt = "You are a skilled tech journalist writing for an AI newsletter. Create engaging, informative summaries that capture both technical details and human interest."
+            system_prompt = self._build_system_prompt(base_prompt)
+
             response = self.client.messages.create(
                 model="claude-3-7-sonnet-20250219",
                 max_tokens=400,
                 temperature=0.7,
-                system="You are a skilled tech journalist writing for an AI newsletter. Create engaging, informative summaries that capture both technical details and human interest.",
+                system=system_prompt,
                 messages=[
                     {"role": "user", "content": prompt}
                 ]
@@ -254,23 +301,26 @@ Source material:
 Summary:"""
         
         try:
+            base_prompt = "You are writing concise, engaging summaries for an AI newsletter audience."
+            system_prompt = self._build_system_prompt(base_prompt)
+
             response = self.client.messages.create(
                 model="claude-3-7-sonnet-20250219",
                 max_tokens=250,
                 temperature=0.6,
-                system="You are writing concise, engaging summaries for an AI newsletter audience.",
+                system=system_prompt,
                 messages=[
                     {"role": "user", "content": prompt}
                 ]
             )
-            
+
             summary_text = response.content[0].text.strip()
             summary_text, issues = self.qa_check_summary(summary_text, [])
             if issues:
                 print(f"⚠️  QA flags for story '{title}': {', '.join(issues)}")
 
             return summary_text, source_link
-            
+
         except Exception as e:
             print(f"❌ Error summarizing individual story: {str(e)}")
             return self.create_fallback_summary([article]), source_link
@@ -289,21 +339,254 @@ Summary:"""
         prompt = prompts.get(section_name, f"Write a brief introduction for {section_name} with {article_count} items.")
         
         try:
+            base_prompt = "You are writing engaging newsletter section introductions. Keep them brief, punchy, and appropriate for the tone."
+            system_prompt = self._build_system_prompt(base_prompt)
+
             response = self.client.messages.create(
                 model="claude-3-7-sonnet-20250219",
                 max_tokens=100,
                 temperature=0.8,
-                system="You are writing engaging newsletter section introductions. Keep them brief, punchy, and appropriate for the tone.",
+                system=system_prompt,
                 messages=[
                     {"role": "user", "content": prompt}
                 ]
             )
-            
+
             return response.content[0].text.strip()
-            
+
         except Exception as e:
             print(f"❌ Error generating section intro: {str(e)}")
             return f"Here's what happened in {section_name.lower()} this week:"
+
+    def generate_linkedin_post(
+        self, topic: str, articles: List[Dict], trends: List[Dict]
+    ) -> str:
+        """Generate a LinkedIn thought-leadership post (400-600 words).
+
+        Args:
+            topic: Primary topic keyword for the post
+            articles: Source articles to draw from
+            trends: Trending topics for context
+
+        Returns:
+            LinkedIn post text (400-600 words)
+        """
+        if not self.api_enabled:
+            return f"This week in {topic}: Key developments are reshaping the field. Read our full analysis in the newsletter."
+
+        # Prepare article content for prompt
+        content_parts: List[str] = []
+        for i, article in enumerate(articles[:5], 1):
+            content_parts.append(self.format_article_for_prompt(i, article))
+        combined_content = "\n\n".join(content_parts)
+
+        # Format trend context
+        trend_context = ""
+        if trends:
+            trend_keywords = [t.get('keyword', '') for t in trends[:3] if t.get('keyword')]
+            if trend_keywords:
+                trend_context = f"\n\nRelated trending topics this week: {', '.join(trend_keywords)}"
+
+        prompt = f"""Write a LinkedIn thought-leadership post about "{topic}" for a professional audience interested in AI and biology research.
+
+REQUIREMENTS:
+- Length: 400-600 words (this is critical - aim for ~500 words)
+- Tone: Professional, insightful, authoritative but approachable
+- Structure:
+  1. Opening hook (1-2 sentences that grab attention)
+  2. Context and key developments (2-3 paragraphs)
+  3. Analysis and implications (1-2 paragraphs)
+  4. Forward-looking takeaway or call to reflection (1 paragraph)
+- NO hashtags, emojis, or "Like if you agree" type engagement bait
+- Use concrete details, numbers, and specific examples from the sources
+- Write in first person plural ("we're seeing", "our field") or third person
+- Do NOT start with "I" or make it about yourself
+- Avoid generic statements - be specific and substantive
+
+SOURCE MATERIAL:
+{combined_content}
+{trend_context}
+
+Write the LinkedIn post now:"""
+
+        try:
+            base_prompt = "You are a respected voice in AI and computational biology, writing thoughtful LinkedIn content that provides genuine insight rather than engagement bait."
+            system_prompt = self._build_system_prompt(base_prompt)
+
+            response = self.client.messages.create(
+                model="claude-3-7-sonnet-20250219",
+                max_tokens=1000,
+                temperature=0.7,
+                system=system_prompt,
+                messages=[{"role": "user", "content": prompt}]
+            )
+
+            return response.content[0].text.strip()
+
+        except Exception as e:
+            print(f"❌ Error generating LinkedIn post: {str(e)}")
+            return f"This week in {topic}: Key developments are reshaping the field. Read our full analysis in the newsletter."
+
+    def generate_blog_post(
+        self,
+        topic: str,
+        articles: List[Dict],
+        community_posts: List[Dict],
+        trends: List[Dict]
+    ) -> tuple[str, str, str]:
+        """Generate a comprehensive blog post (2000-3000 words).
+
+        Args:
+            topic: Primary topic keyword for the post
+            articles: Source articles from respected sources
+            community_posts: Community discussion posts
+            trends: Trending topics for context
+
+        Returns:
+            Tuple of (title, content, meta_description)
+        """
+        if not self.api_enabled:
+            title = f"Weekly Analysis: {topic.title()}"
+            content = f"This week's developments in {topic} highlight ongoing progress in the field."
+            meta = f"Weekly analysis of {topic} developments in AI and biology research."
+            return title, content, meta
+
+        # Prepare article content
+        article_parts: List[str] = []
+        citations: List[str] = []
+        for i, article in enumerate(articles[:8], 1):
+            article_parts.append(self.format_article_for_prompt(i, article))
+            source = article.get('source', '') or article.get('subreddit', '')
+            title = article.get('title', '')
+            link = article.get('link', '') or article.get('url', '')
+            citations.append(f"[{i}] {source}: {title} - {link}")
+
+        # Prepare community context
+        community_context = ""
+        if community_posts:
+            community_snippets = []
+            for post in community_posts[:3]:
+                title = post.get('title', '')
+                score = post.get('score', 0)
+                comments = post.get('num_comments', 0)
+                community_snippets.append(f"- {title} ({score} upvotes, {comments} comments)")
+            community_context = f"\n\nCOMMUNITY DISCUSSION:\n" + "\n".join(community_snippets)
+
+        # Prepare trend context
+        trend_context = ""
+        if trends:
+            trend_info = []
+            for t in trends[:5]:
+                keyword = t.get('keyword', '')
+                mentions = t.get('mentions', 0)
+                sentiment = t.get('community_sentiment', 'neutral')
+                if keyword:
+                    trend_info.append(f"- {keyword}: {mentions} mentions, {sentiment} sentiment")
+            if trend_info:
+                trend_context = f"\n\nTRENDING THIS WEEK:\n" + "\n".join(trend_info)
+
+        citations_text = "\n".join(citations) if citations else "No specific citations available."
+
+        prompt = f"""Write a comprehensive blog post about "{topic}" for the BioAI Weekly newsletter.
+
+REQUIREMENTS:
+- Length: 2000-3000 words (this is critical - aim for ~2500 words)
+- Start with a TL;DR section (3-4 bullet points summarizing key takeaways)
+- Include 4-6 clearly labeled sections with ## headers
+- Cite sources using [1], [2], etc. format where relevant
+- Include a "What This Means" or "Looking Ahead" conclusion section
+- Tone: Authoritative but accessible, suitable for researchers and industry professionals
+- Be specific with data, timelines, and technical details
+- Cover multiple angles: technical developments, industry implications, community reactions
+
+STRUCTURE TEMPLATE:
+## TL;DR
+[3-4 bullet points]
+
+## [Section 1 - e.g., "The Core Development"]
+[Content with citations]
+
+## [Section 2 - e.g., "Technical Deep Dive"]
+[Content with citations]
+
+## [Section 3 - e.g., "Industry Implications"]
+[Content]
+
+## [Section 4 - e.g., "Community Perspective"]
+[Content drawing from community discussions]
+
+## [Section 5 - e.g., "What This Means"]
+[Forward-looking analysis]
+
+SOURCE ARTICLES:
+{chr(10).join(article_parts)}
+{community_context}
+{trend_context}
+
+AVAILABLE CITATIONS:
+{citations_text}
+
+FIRST: Write a compelling blog title (not generic - be specific to this week's content)
+SECOND: Write a meta description (150-160 characters for SEO)
+THIRD: Write the full blog post
+
+Format your response as:
+TITLE: [Your title here]
+META: [Your meta description here]
+CONTENT:
+[Your full blog post here]"""
+
+        try:
+            base_prompt = "You are the lead writer for BioAI Weekly, producing in-depth analysis that bridges cutting-edge research and practical implications. Your writing is respected for its technical accuracy and clarity."
+            system_prompt = self._build_system_prompt(base_prompt)
+
+            response = self.client.messages.create(
+                model="claude-3-7-sonnet-20250219",
+                max_tokens=4000,
+                temperature=0.7,
+                system=system_prompt,
+                messages=[{"role": "user", "content": prompt}]
+            )
+
+            response_text = response.content[0].text.strip()
+
+            # Parse the response
+            title = topic.title()
+            meta = f"Weekly analysis of {topic} in AI and biology research."
+            content = response_text
+
+            # Extract title
+            if "TITLE:" in response_text:
+                title_start = response_text.find("TITLE:") + 6
+                title_end = response_text.find("\n", title_start)
+                if title_end > title_start:
+                    title = response_text[title_start:title_end].strip()
+
+            # Extract meta description
+            if "META:" in response_text:
+                meta_start = response_text.find("META:") + 5
+                meta_end = response_text.find("\n", meta_start)
+                if meta_end > meta_start:
+                    meta = response_text[meta_start:meta_end].strip()
+
+            # Extract content
+            if "CONTENT:" in response_text:
+                content_start = response_text.find("CONTENT:") + 8
+                content = response_text[content_start:].strip()
+            elif "## TL;DR" in response_text:
+                # Content starts at TL;DR if no CONTENT marker
+                content_start = response_text.find("## TL;DR")
+                content = response_text[content_start:].strip()
+
+            return title, content, meta
+
+        except Exception as e:
+            print(f"❌ Error generating blog post: {str(e)}")
+            title = f"Weekly Analysis: {topic.title()}"
+            content = f"This week's developments in {topic} highlight ongoing progress in the field."
+            meta = f"Weekly analysis of {topic} developments in AI and biology research."
+            return title, content, meta
+
 
 if __name__ == "__main__":
     # Test the summarizer

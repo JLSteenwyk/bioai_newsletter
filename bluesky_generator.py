@@ -5,8 +5,9 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Dict, List, Sequence
 import html
+import os
 
-OUTPUT_DIR = "/Users/jacoblsteenwyk/Desktop/BUSINESS/AI_NEWS"
+OUTPUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "output")
 
 
 @dataclass

@@ -1,5 +1,6 @@
 import requests
 import json
+import os
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional
 import time
@@ -184,7 +185,8 @@ class RedditScraper:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"reddit_posts_{timestamp}.json"
         
-        filepath = f"/Users/jacoblsteenwyk/Desktop/BUSINESS/AI_NEWS/{filename}"
+        output_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "output")
+        filepath = os.path.join(output_dir, filename)
         
         with open(filepath, 'w', encoding='utf-8') as f:
             json.dump(posts, f, indent=2, ensure_ascii=False)

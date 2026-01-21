@@ -1,5 +1,6 @@
 import feedparser
 import requests
+import os
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional
 import json
@@ -150,7 +151,8 @@ class RSSNewsScraper:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"rss_articles_{timestamp}.json"
         
-        filepath = f"/Users/jacoblsteenwyk/Desktop/BUSINESS/AI_NEWS/{filename}"
+        output_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "output")
+        filepath = os.path.join(output_dir, filename)
         
         with open(filepath, 'w', encoding='utf-8') as f:
             json.dump(articles, f, indent=2, ensure_ascii=False)

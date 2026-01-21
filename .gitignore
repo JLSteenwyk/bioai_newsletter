@@ -29,3 +29,6 @@ build/
 
 # Logs
 *.log
+
+# Generated output
+output/
