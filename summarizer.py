@@ -216,7 +216,7 @@ Summary:"""
             system_prompt = self._build_system_prompt(base_prompt)
 
             response = self.client.messages.create(
-                model="claude-3-7-sonnet-20250219",
+                model="claude-sonnet-4-6",
                 max_tokens=400,
                 temperature=0.7,
                 system=system_prompt,
@@ -305,7 +305,7 @@ Summary:"""
             system_prompt = self._build_system_prompt(base_prompt)
 
             response = self.client.messages.create(
-                model="claude-3-7-sonnet-20250219",
+                model="claude-sonnet-4-6",
                 max_tokens=250,
                 temperature=0.6,
                 system=system_prompt,
@@ -343,7 +343,7 @@ Summary:"""
             system_prompt = self._build_system_prompt(base_prompt)
 
             response = self.client.messages.create(
-                model="claude-3-7-sonnet-20250219",
+                model="claude-sonnet-4-6",
                 max_tokens=100,
                 temperature=0.8,
                 system=system_prompt,
@@ -414,7 +414,7 @@ Write the LinkedIn post now:"""
             system_prompt = self._build_system_prompt(base_prompt)
 
             response = self.client.messages.create(
-                model="claude-3-7-sonnet-20250219",
+                model="claude-sonnet-4-6",
                 max_tokens=1000,
                 temperature=0.7,
                 system=system_prompt,
@@ -541,7 +541,7 @@ CONTENT:
             system_prompt = self._build_system_prompt(base_prompt)
 
             response = self.client.messages.create(
-                model="claude-3-7-sonnet-20250219",
+                model="claude-sonnet-4-6",
                 max_tokens=4000,
                 temperature=0.7,
                 system=system_prompt,
