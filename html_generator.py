@@ -98,7 +98,7 @@ class HTMLGenerator:
                 <p class="footer-text">AI-generated social content for biology and AI research</p>
                 <div class="footer-meta">
                     <span>Generated on {generated_date}</span>
-                    <span>Model: Claude 3.7 Sonnet</span>
+                    <span>Model: Claude Sonnet 4.6</span>
                 </div>
             </div>
         </div>

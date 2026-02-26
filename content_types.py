@@ -20,7 +20,7 @@ class SocialPost:
     blog_content: str = ""
     blog_meta_description: str = ""
     generated_at: datetime = field(default_factory=datetime.now)
-    model_used: str = "claude-3-7-sonnet-20250219"
+    model_used: str = "claude-sonnet-4-6"
     citations: List[str] = field(default_factory=list)
 
     def word_count(self, platform: str) -> int:
